@@ -128,7 +128,7 @@
                                 };
                                 document.addEventListener("keydown", function (event) {
                                     if (
-                                    event.key === "F12" || 
+                                    event.key === "F12" ||
                                     (event.ctrlKey && event.shiftKey && event.key === "I") ||
                                     (event.ctrlKey && event.shiftKey && event.key === "J") ||
                                     (event.ctrlKey && event.key === "U")
@@ -306,9 +306,9 @@ document.addEventListener('touchmove', stopAutoScroll, { passive: true });
       try {
         const fd = new FormData(form);
         const payload = toJSON(fd);
-        fetch('https://testdata-6744.restdb.io/rest/guestrsvp', {
+        fetch('https://wedding.chieumu1999.workers.dev/rsvp', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-apikey': '6902d9d57f34ed24d4200c4e'},
+          headers: { 'Content-Type': 'application/json'},
           body: JSON.stringify(payload),
           mode: 'cors'
         }).catch(function(err){ console.log('Custom API submit failed:', err); });
@@ -325,5 +325,126 @@ document.addEventListener('touchmove', stopAutoScroll, { passive: true });
   } else {
     setup();
   }
+})();
+</script><script>
+(function(){
+  function enableQrDownload(){
+    const configs = [
+      { id: 'BUTTON7', href: 'QR_CR.jpeg', filename: 'QR_ChuRe.jpg' },
+      { id: 'BUTTON9', href: 'QR_CD.jpg',  filename: 'QR_CoDau.jpg' }
+    ];
+    configs.forEach(cfg => {
+      const el = document.getElementById(cfg.id);
+      if (!el) return;
+      const anchor = el.tagName === 'A' ? el : el.querySelector('a');
+      if (!anchor) return;
+      try { anchor.setAttribute('download', cfg.filename); } catch(_) {}
+      const handler = function(e){
+        try {
+          e.preventDefault();
+          const a = document.createElement('a');
+          a.href = cfg.href;
+          a.download = cfg.filename;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => document.body.removeChild(a), 0);
+        } catch(_) {}
+      };
+      anchor.addEventListener('click', handler, true);
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', enableQrDownload);
+  } else {
+    enableQrDownload();
+  }
+})();
+</script><style>
+.toast-root{position:fixed;z-index:99999;left:0;right:0;pointer-events:none}
+  .toast-root.bottom{bottom:20px}.toast-root.top{top:2px}
+  .toast{margin:0 auto;max-width:420px;color:#3b2b1a;background:rgba(255,255,255,.2);backdrop-filter:saturate(140%) blur(22px);-webkit-backdrop-filter:saturate(140%) blur(18px);border-radius:14px;padding:12px 16px 12px 44px;border:1px solid rgba(144,109,56,.12);box-shadow:0 6px 20px rgba(144,109,56,.10),0 4px 12px rgba(0,0,0,.05);font:600 14px/1.45 system-ui,-apple-system,Segoe UI,Roboto;letter-spacing:.2px;opacity:0;transition:opacity .35s ease}
+.toast::before{content:"\2764";position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:18px;color:#e25555;filter:drop-shadow(0 1px 0 rgba(0,0,0,.15))}
+  .toast.show{opacity:0.9}
+</style><script>
+(function(){
+  function ensureToastRoot(pos){
+    const cls=pos==='top'?'top':'bottom';
+    let root=document.querySelector('.toast-root.'+cls);
+    if(!root){root=document.createElement('div');root.className='toast-root '+cls;document.body.appendChild(root);}return root;
+  }
+  window.showToast=function(message,position){
+    const root=ensureToastRoot(position);
+    const el=document.createElement('div');el.className='toast';el.textContent=message;root.appendChild(el);
+    requestAnimationFrame(()=>el.classList.add('show'));
+    setTimeout(()=>{el.classList.remove('show');setTimeout(()=>el.remove(),250);},2800);
+  };
+})();
+// RSVP ticker: loop through comments like livestream
+(function(){
+  const ENDPOINT='https://wedding.chieumu1999.workers.dev/rsvp';
+  const INTERVAL_MS=3200; // one toast ~2.8s, leave headroom
+  let items=[]; // [{name,message,key}]
+  let idx=0;
+  let timer=null;
+
+  function normalize(list){
+    return list.map((it, i)=>{
+      const name=((it && (it.name||it.guest_name))||'').toString().trim();
+      const msg=((it && (it.message||it.note))||'').toString().trim();
+      const key=(it && (it.id||it._id||it.createdAt||it.time||''))+':'+i+':'+name+msg;
+      return { name, message: msg, key };
+    }).filter(x=> x.message && x.message.trim().length >= 2);
+  }
+
+  async function fetchAll(){
+    try{
+      const res=await fetch(ENDPOINT,{mode:'cors'});
+      const data=await res.json();
+      const raw=Array.isArray(data)?data:(Array.isArray(data.items)?data.items:[]);
+      const normalized=normalize(raw);
+      if(normalized.length){
+        items=normalized;
+        // keep idx within bounds but try to continue from latest
+        if(idx>=items.length) idx=0;
+      }
+    }catch(e){}
+  }
+
+  function showNext(){
+    if(!items.length) return;
+    const it=items[idx++ % items.length];
+    const text = it.name ? (it.message? `${it.name}: ${it.message}` : it.name) : it.message;
+    if(typeof window.showToast==='function') window.showToast(text, 'top');
+  }
+
+  function start(){
+    if(timer) clearInterval(timer);
+    timer=setInterval(showNext, INTERVAL_MS);
+  }
+
+  // kick off (fetch once on load)
+  (async function init(){
+    await fetchAll();
+    showNext();
+    start();
+  })();
+
+  // refresh immediately after local submit
+  (function hookSubmit(){
+    const wrapper=document.getElementById('FORM2');
+    if(!wrapper) return;
+    const form=wrapper.querySelector('form.ladi-form');
+    if(!form) return;
+    form.addEventListener('submit', function(){
+      // Re-fetch once after submit so ticker cập nhật mới
+      setTimeout(async ()=>{ await fetchAll(); }, 800);
+    }, true);
+  })();
+
+  // pause/resume on tab visibility
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState==='hidden'){ if(timer) { clearInterval(timer); timer=null; } }
+    else { if(!timer){ showNext(); start(); } }
+  });
 })();
 </script></body></html>

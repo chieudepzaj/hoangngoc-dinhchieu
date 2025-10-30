@@ -143,7 +143,7 @@
                                     const styleMsg = 'font-size: 16px;';
 
                                     console.log('%cDừng lại!', styleTitle);
-                                    console.log('%cĐây là một tính năng của trình duyệt dành cho các nhà phát triển. Nếu ai đó bảo bạn sao chép-dán nội dung nào đó vào đây để bật một tính năng của LadiPage hoặc "hack" tài khoản của người khác, thì đó là hành vi lừa đảo và sẽ khiến họ có thể truy cập vào tài khoản của bạn.', styleMsg);
+                                    console.log('%cĐây là một tính năng của trình duyệt KHÔNG dành cho các dev lỏ :))', styleMsg);
                                 })();
                             </script>
                             <style>
@@ -300,42 +300,23 @@ document.addEventListener('touchmove', stopAutoScroll, { passive: true });
     if (!formWrapper) return;
     const form = formWrapper.querySelector('form.ladi-form');
     if (!form) return;
-    let locking = false;
-    const handler = async function(e){
-      if (locking) return;
-      locking = true;
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    const handler = function(){
+      if (form.dataset.customPosted === '1') return;
+      form.dataset.customPosted = '1';
       try {
         const fd = new FormData(form);
         const payload = toJSON(fd);
-        await fetch('https://testdata-6744.restdb.io/rest/guestrsvp', {
+        fetch('https://testdata-6744.restdb.io/rest/guestrsvp', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-apikey': '7e0e5a75b8ea176ebfb0345e59071f20e2fc8'},
+          headers: { 'Content-Type': 'application/json', 'x-apikey': '6902d9d57f34ed24d4200c4e'},
           body: JSON.stringify(payload),
           mode: 'cors'
-        });
-      } catch (err) {
-        console.log('Custom API submit failed:', err);
+        }).catch(function(err){ console.log('Custom API submit failed:', err); });
+      } catch(err) {
+        console.log('Custom hook error:', err);
       }
-      // Hand off to LadiPage's submit (to keep thank-you behavior) instead of native form.submit()
-      try {
-        locking = false;
-        if (window.ladi && typeof window.ladi === 'function') {
-          const wrapper = formWrapper; // #FORM2 element
-          if (wrapper && wrapper.id) {
-            window.ladi(wrapper.id).submit();
-            return;
-          }
-        }
-      } catch(e) {}
-      // Fallback: trigger a click on the hidden submit button so Ladi listeners catch it
-      const hiddenBtn = form.querySelector('button[type="submit"]');
-      if (hiddenBtn) {
-        setTimeout(() => hiddenBtn.click(), 0);
-        return;
-      }
+      // allow LadiPage to proceed normally (clear fields, popup, effects)
+      setTimeout(function(){ form.dataset.customPosted = ''; }, 5000);
     };
     form.addEventListener('submit', handler, true);
   }
